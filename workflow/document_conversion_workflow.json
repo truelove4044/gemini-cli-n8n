@@ -1,0 +1,303 @@
+{
+  "name": "Document Conversion Process",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-document",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $binary.data.mimeType }}",
+              "operation": "contains",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "name": "Check MimeType",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "binary"
+      },
+      "name": "Move Binary Data",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "typeVersion": 1,
+      "position": [
+        750,
+        200
+      ],
+      "notes": "Extracts text from simple text files (txt, md)"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "textDetection"
+      },
+      "name": "Google Cloud Vision",
+      "type": "n8n-nodes-base.googleCloudVision",
+      "typeVersion": 1,
+      "position": [
+        750,
+        450
+      ],
+      "notes": "OCR for images"
+    },
+    {
+      "parameters": {},
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "prompt": "You are an expert system analyst. Read the following document and produce a concise, structured summary focusing on key entities, processes, and their relationships. This summary will be used to generate system architecture diagrams. Output in JSON format with keys: \"main_goal\", \"actors\", \"systems\", \"core_processes\".\n\nDocument:\n{{ $json.text || $json.description }}",
+        "options": {}
+      },
+      "name": "LLM - Summary",
+      "type": "n8n-nodes-base.googleGeminiChat",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "prompt": "Based on the following system summary, describe the high-level system architecture. Identify the main components, their responsibilities, and how they interact. The output should be in clear Markdown.\n\nSystem Summary:\n{{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "name": "LLM - Architecture",
+      "type": "n8n-nodes-base.googleGeminiChat",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        200
+      ],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "prompt": "Based on the following system summary, generate a Mermaid.js flowchart diagram that illustrates the main process flow. The diagram should start with the initial user action and follow the sequence of events. Only output the Mermaid code block, starting with ```mermaid and ending with ```.\n\nSystem Summary:\n{{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "name": "LLM - Mermaid",
+      "type": "n8n-nodes-base.googleGeminiChat",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        450
+      ],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "wait"
+      },
+      "name": "Merge Outputs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        1750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "final_markdown",
+              "value": "## 系統架構分析\n\n{{ $json[\"text\"] }} \n\n## 流程圖\n\n{{ $items(\"LLM - Mermaid\")[0].json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Format Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.final_markdown }}",
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check MimeType",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check MimeType": {
+      "main": [
+        [
+          {
+            "node": "Google Cloud Vision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move Binary Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Binary Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Cloud Vision": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "LLM - Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM - Summary": {
+      "main": [
+        [
+          {
+            "node": "LLM - Architecture",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "LLM - Mermaid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM - Architecture": {
+      "main": [
+        [
+          {
+            "node": "Merge Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM - Mermaid": {
+      "main": [
+        [
+          {
+            "node": "Merge Outputs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Outputs": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
