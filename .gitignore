@@ -1,0 +1,48 @@
+# 環境變數文件
+.env
+.env.local
+.env.production
+
+# Docker volumes
+postgres_data/
+n8n_data/
+
+# 備份文件
+backups/
+*.backup
+*.sql
+*.tar.gz
+
+# 日誌文件
+*.log
+logs/
+
+# 系統文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 臨時文件
+tmp/
+temp/
+
+# Gemini CLI
+.gemini/settings.json
+.gemini/cache/
+# Keep skills for version control
+!.gemini/skills/
+
+# Cursor IDE (個人配置)
+.cursor/
+
+# Security files (包含 API keys 引用或敏感信息)
+security/
+API_KEY_SECURITY_CHECK.md
+SECURITY_FIX.md
+clean_git_history_auto.py
+GIT_IGNORE_CHECK.md
