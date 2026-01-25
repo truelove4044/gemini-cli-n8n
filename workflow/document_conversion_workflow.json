@@ -1,303 +1,196 @@
 {
-  "name": "Document Conversion Process",
+  "name": "Document Analysis Workflow",
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "process-document",
-        "options": {}
-      },
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "string": [
+        "formTitle": "upload file",
+        "formFields": {
+          "values": [
             {
-              "value1": "={{ $binary.data.mimeType }}",
-              "operation": "contains",
-              "value2": "image"
-            }
-          ]
-        }
-      },
-      "name": "Check MimeType",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        500,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "binary"
-      },
-      "name": "Move Binary Data",
-      "type": "n8n-nodes-base.moveBinaryData",
-      "typeVersion": 1,
-      "position": [
-        750,
-        200
-      ],
-      "notes": "Extracts text from simple text files (txt, md)"
-    },
-    {
-      "parameters": {
-        "resource": "image",
-        "operation": "textDetection"
-      },
-      "name": "Google Cloud Vision",
-      "type": "n8n-nodes-base.googleCloudVision",
-      "typeVersion": 1,
-      "position": [
-        750,
-        450
-      ],
-      "notes": "OCR for images"
-    },
-    {
-      "parameters": {},
-      "name": "Merge",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 1,
-      "position": [
-        1000,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "prompt": "You are an expert system analyst. Read the following document and produce a concise, structured summary focusing on key entities, processes, and their relationships. This summary will be used to generate system architecture diagrams. Output in JSON format with keys: \"main_goal\", \"actors\", \"systems\", \"core_processes\".\n\nDocument:\n{{ $json.text || $json.description }}",
-        "options": {}
-      },
-      "name": "LLM - Summary",
-      "type": "n8n-nodes-base.googleGeminiChat",
-      "typeVersion": 1,
-      "position": [
-        1250,
-        300
-      ],
-      "credentials": {
-        "googleGeminiApi": {
-          "id": "YOUR_CREDENTIAL_ID",
-          "name": "Google Gemini account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "prompt": "Based on the following system summary, describe the high-level system architecture. Identify the main components, their responsibilities, and how they interact. The output should be in clear Markdown.\n\nSystem Summary:\n{{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "name": "LLM - Architecture",
-      "type": "n8n-nodes-base.googleGeminiChat",
-      "typeVersion": 1,
-      "position": [
-        1500,
-        200
-      ],
-      "credentials": {
-        "googleGeminiApi": {
-          "id": "YOUR_CREDENTIAL_ID",
-          "name": "Google Gemini account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "prompt": "Based on the following system summary, generate a Mermaid.js flowchart diagram that illustrates the main process flow. The diagram should start with the initial user action and follow the sequence of events. Only output the Mermaid code block, starting with ```mermaid and ending with ```.\n\nSystem Summary:\n{{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "name": "LLM - Mermaid",
-      "type": "n8n-nodes-base.googleGeminiChat",
-      "typeVersion": 1,
-      "position": [
-        1500,
-        450
-      ],
-      "credentials": {
-        "googleGeminiApi": {
-          "id": "YOUR_CREDENTIAL_ID",
-          "name": "Google Gemini account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "wait"
-      },
-      "name": "Merge Outputs",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 1,
-      "position": [
-        1750,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "values": {
-          "string": [
-            {
-              "name": "final_markdown",
-              "value": "## 系統架構分析\n\n{{ $json[\"text\"] }} \n\n## 流程圖\n\n{{ $items(\"LLM - Mermaid\")[0].json.text }}"
+              "fieldLabel": "file",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "requiredField": true
             }
           ]
         },
         "options": {}
       },
-      "name": "Format Output",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 1,
+      "id": "c302f8e5-6bed-4b64-8d52-33eaa5fce86a",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
       "position": [
-        2000,
-        300
-      ]
+        -336,
+        48
+      ],
+      "webhookId": "a857ad3f-4b4d-4574-b503-809a95b1fbbf",
+      "typeVersion": 2.2
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json.final_markdown }}",
+        "url": "={{ $json.request_check_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.DATALABTO_API_KEY }}"
+            }
+          ]
+        },
         "options": {}
       },
-      "name": "Respond to Webhook",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
+      "id": "3cc12307-f5da-476a-811a-79920f20abf7",
+      "name": "Get Markdown",
+      "type": "n8n-nodes-base.httpRequest",
       "position": [
-        2250,
-        300
-      ]
+        336,
+        48
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.datalab.to/api/v1/marker",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.DATALABTO_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "max_pages",
+              "value": "4"
+            },
+            {
+              "name": "use_llm",
+              "value": "true"
+            },
+            {
+              "name": "output_format",
+              "value": "markdown"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ec9e9703-fb38-4ba5-97f6-a73bee7c47f7",
+      "name": "Send to Datalab API",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -112,
+        48
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "20280dbd-8188-4f5e-8e4e-74621d65d40a",
+              "name": "markdown",
+              "type": "string",
+              "value": "={{ $json.markdown }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "542793bf-05c1-4c6c-b0e0-b087669f966c",
+      "name": "Set Fields",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        560,
+        48
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "id": "cb900de1-e4b1-488f-8a12-9946bb8466f6",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        112,
+        48
+      ],
+      "webhookId": "7b49cf9b-9859-4361-a8b8-2407d114d418",
+      "typeVersion": 1.1
     }
   ],
+  "pinData": {},
   "connections": {
-    "Webhook": {
+    "Wait": {
       "main": [
         [
           {
-            "node": "Check MimeType",
+            "node": "Get Markdown",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check MimeType": {
+    "Get Markdown": {
       "main": [
         [
           {
-            "node": "Google Cloud Vision",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Move Binary Data",
+            "node": "Set Fields",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Move Binary Data": {
+    "On form submission": {
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "Send to Datalab API",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Cloud Vision": {
+    "Send to Datalab API": {
       "main": [
         [
           {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "LLM - Summary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LLM - Summary": {
-      "main": [
-        [
-          {
-            "node": "LLM - Architecture",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "LLM - Mermaid",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LLM - Architecture": {
-      "main": [
-        [
-          {
-            "node": "Merge Outputs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LLM - Mermaid": {
-      "main": [
-        [
-          {
-            "node": "Merge Outputs",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Outputs": {
-      "main": [
-        [
-          {
-            "node": "Format Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Output": {
-      "main": [
-        [
-          {
-            "node": "Respond to Webhook",
+            "node": "Wait",
             "type": "main",
             "index": 0
           }
         ]
       ]
     }
-  }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "23a7bbad-b542-4bce-91a6-802c15bfebcb",
+  "meta": {
+    "instanceId": "a33223fdd2feb172fde7a069e78c16780d99990650b4a14ae8fc685e6c49dbd7"
+  },
+  "id": "RKfT3GgZKppFkc7oKfuaN",
+  "tags": []
 }
